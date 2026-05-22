@@ -80,6 +80,7 @@ chrome://flags/#prompt-api-for-gemini-nano
 
 ```
 nano-chat-in-new-tab/
+├── icons/             # 各サイズのアイコン
 ├── manifest.json      # Chrome拡張機能の設定ファイル
 ├── nanochat.html      # 新しいタブのUI
 ├── nanochat.js        # メインロジック（Gemini Nano + Google検索）
