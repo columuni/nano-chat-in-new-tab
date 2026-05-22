@@ -2,7 +2,9 @@
 
 Chromeの新しいタブページにGoogleがChromeに組み込んだオンデバイスAIである**Gemini Nano**を搭載したAIチャットインターフェイスを表示するChrome拡張機能です。
 
-![スクリーンショット](screenshot.png)
+![スクリーンショット1](screenshot1.png)
+
+![スクリーンショット2](screenshot2.png)
 
 ---
 
