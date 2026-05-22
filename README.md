@@ -95,7 +95,8 @@ nano-chat-in-new-tab/
 ├── nanochat.html      # 新しいタブのUI
 ├── nanochat.js        # メインロジック（Gemini Nano + Google検索）
 ├── README.md          # README
-└── screenshot.png     # スクリーンショット
+├── screenshot1.png    # スクリーンショット1
+└── screenshot2.png    # スクリーンショット2
 ```
 
 ---
