@@ -66,7 +66,7 @@ chrome://flags/#prompt-api-for-gemini-nano
     ```bash
     git clone https://github.com/columuni/nano-chat-in-new-tab.git
     ```
-2. Chrome のアドレスバーに`chrome://extensions`と入力して開きます
+2. Chromeのアドレスバーに`chrome://extensions`と入力して開きます
 3. 右上の 「デベロッパーモード」をONにします
 4. 「パッケージ化されていない拡張機能を読み込む」をクリックし、解凍したフォルダーを選択します
 
