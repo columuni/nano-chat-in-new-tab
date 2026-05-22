@@ -22,7 +22,7 @@ setInterval(updateClock, 10000);
 // =======================================
 let aiSession = null;      // 会話用
 let judgeSession = null;   // 検索判断用
-let querySession = null;   // 検索クエリ生成用
+let querySession = null;   // 検索クエリー生成用
 let isReady = false;
 
 const statusDot = document.getElementById('statusDot');
@@ -43,7 +43,7 @@ async function initAI()
  {
   // Chrome 148以降のAPIチェック
   if (!('LanguageModel' in self)) {
-    setStatus('error', 'Gemini Nano が利用できません（Chrome 148以降が必要です）');
+    setStatus('error', 'Gemini Nanoが利用できません（Chrome 148以降が必要です）');
     return;
   }
 
@@ -51,12 +51,12 @@ async function initAI()
     const availability = await LanguageModel.availability();
 
     if (availability === 'unavailable') {
-      setStatus('error', 'このデバイスでは Gemini Nano を使用できません');
+      setStatus('error', 'このデバイスではGemini Nanoを使用できません');
       return;
     }
 
     if (availability === 'downloadable' || availability === 'downloading') {
-      setStatus('loading', 'Gemini Nano のダウンロードが必要です');
+      setStatus('loading', 'Gemini Nanoのダウンロードが必要です');
       showDownloadPrompt();
     return;
 }
@@ -73,7 +73,7 @@ async function initAI()
     });
 
     isReady = true;
-    setStatus('ready', 'Gemini Nano 準備完了');
+    setStatus('ready', 'Gemini Nano準備完了');
     sendBtn.disabled = false;
     searchInput.focus();
 
@@ -84,10 +84,10 @@ async function initAI()
 	
 	querySession = await LanguageModel.create({
       systemPrompt: `
-    あなたは検索クエリ最適化器です。
+    あなたは検索クエリー最適化器です。
 
     ルール:
-    - 出力は検索クエリのみ
+    - 出力は検索クエリーのみ
     - 説明禁止
     - 引用符禁止
     - 会話しない
@@ -105,7 +105,7 @@ async function initAI()
 function showDownloadPrompt() {
   const bar = document.querySelector('.status-bar');
   const btn = document.createElement('button');
-  btn.textContent = 'Gemini Nano を起動';
+  btn.textContent = 'Gemini Nanoを起動';
   btn.style.cssText = `
     margin-left: 12px;
     padding: 4px 12px;
@@ -130,7 +130,7 @@ function showDownloadPrompt() {
       - 余計な前置きは省いて、直接回答してください`,
       });
       isReady = true;
-      setStatus('ready', 'Gemini Nano 準備完了');
+      setStatus('ready', 'Gemini Nano準備完了');
       sendBtn.disabled = false;
       searchInput.focus();
       judgeSession = await LanguageModel.create({
@@ -139,10 +139,10 @@ function showDownloadPrompt() {
 
       querySession = await LanguageModel.create({
         systemPrompt: `
-      あなたは検索クエリ最適化器です。
+      あなたは検索クエリー最適化器です。
 
       ルール:
-      - 出力は検索クエリのみ
+      - 出力は検索クエリーのみ
       - 説明禁止
       - 引用符禁止
       - 会話禁止
@@ -273,10 +273,10 @@ async function needsSearch(userInput) {
     const result = await judgeSession.prompt(
       `Does the following question require a Google search to answer accurately? Answer only "yes" or "no".
 
-Requires search: latest news, current prices, weather, real-time info, recent events.
-Does not require search: general knowledge, math, writing help, casual conversation.
+      Requires search: latest news, current prices, weather, real-time info, recent events.
+      Does not require search: general knowledge, math, writing help, casual conversation.
 
-Question: ${userInput}`
+      Question: ${userInput}`
     );
     return result.trim().toLowerCase().startsWith('yes');
   } catch {
@@ -285,7 +285,7 @@ Question: ${userInput}`
 }
 
 // =======================================
-// クエリの最適化（専用セッション使用）
+// クエリーの最適化（専用セッション使用）
 // =======================================
 async function optimizeQuery(userInput) {
   if (!querySession) return userInput;
@@ -306,7 +306,7 @@ async function optimizeQuery(userInput) {
     return result.trim() || userInput;
 
   } catch (err) {
-    console.error('クエリ最適化失敗:', err);
+    console.error('クエリー最適化失敗:', err);
     return userInput;
   }
 }
@@ -386,7 +386,7 @@ function addGoogleLink(body, query) {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
       <path d="M21 13v10h-6v-6h-6v6h-6v-10h-3l12-12 12 12h-3zm-1-5.907v-5.093h-3v2.093l3 3z"/>
     </svg>
-    Google で続きを検索
+    Googleで続きを検索
   `;
   body.appendChild(a);
 }
@@ -431,8 +431,8 @@ async function handleSubmit() {
     let optimizedQuery = null;
 
     if (shouldSearch) {
-      // Step 2: クエリ最適化
-      const indicator2 = addSearchingIndicator(aiBody, 'クエリを最適化中...');
+      // Step 2: クエリー最適化
+      const indicator2 = addSearchingIndicator(aiBody, 'クエリーを最適化中...');
       window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
       optimizedQuery = await optimizeQuery(userInput);
       indicator2.remove();
@@ -482,7 +482,7 @@ async function handleSubmit() {
     }
 
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    setStatus('ready', 'Gemini Nano 準備完了');
+    setStatus('ready', 'Gemini Nano準備完了');
 
   } catch (err) {
     const errorDiv = document.createElement('div');
