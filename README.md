@@ -105,6 +105,7 @@ nano-chat-in-new-tab/
 - host_permissionsの最小化
 - escapeHtmlの徹底
 - 検索ロジック切り替え？（GoogleとDuckDuckGoとか）
+- カラースキームの切り替え
 
 ---
 
