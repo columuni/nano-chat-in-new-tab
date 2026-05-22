@@ -203,7 +203,7 @@ function parseGoogleResults(html, query) {
   const results = [];
   const snippetTexts = [];
 
-  // 検索結果ブロックを取得（複数のセレクタを試みる）
+  // 検索結果ブロックを取得（複数のセレクターを試みる）
   const selectors = ['div.g', 'div[data-sokoban-container]', 'div.tF2Cxc'];
 
   let blocks = [];
