@@ -100,11 +100,11 @@ nano-chat-in-new-tab/
 
 ## やること
 
-□ CSSを最新のネスト仕様に書き換え
-□ JavaScriptの効率化
-□ host_permissionsの最小化
-□ escapeHtmlの徹底
-□ 検索ロジック切り替え？（GoogleとDuckDuckGoとか）
+- CSSを最新のネスト仕様に書き換え
+- JavaScriptの効率化
+- host_permissionsの最小化
+- escapeHtmlの徹底
+- 検索ロジック切り替え？（GoogleとDuckDuckGoとか）
 
 ---
 
