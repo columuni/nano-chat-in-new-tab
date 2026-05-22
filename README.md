@@ -1,6 +1,6 @@
 # Nano Chat in New Tab
 
-Chromeの新しいタブページに、GoogleがChromeに組み込んだオンデバイスAIである**Gemini Nano**を搭載したAIチャットインターフェイスを表示するChrome拡張機能です。
+Chromeの新しいタブページにGoogleがChromeに組み込んだオンデバイスAIである**Gemini Nano**を搭載したAIチャットインターフェイスを表示するChrome拡張機能です。
 
 ![スクリーンショット](screenshot.png)
 
