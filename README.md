@@ -73,9 +73,9 @@ chrome://flags/#prompt-api-for-gemini-nano
 ### 2. 拡張機能を読み込む
 
 1. このリポジトリーをクローンまたはZIPでダウンロードして解凍します
-    ```bash
-    git clone https://github.com/columuni/nano-chat-in-new-tab.git
-    ```
+```bash
+git clone https://github.com/columuni/nano-chat-in-new-tab.git
+```
 2. Chromeのアドレスバーに`chrome://extensions`と入力して開きます
 3. 右上の 「デベロッパーモード」をONにします
 4. 「パッケージ化されていない拡張機能を読み込む」をクリックし、解凍したフォルダーを選択します
@@ -101,15 +101,15 @@ nano-chat-in-new-tab/
 
 ---
 
-## やることorやりたいこと
+## TODO
 
 - CSSを最新のネスト仕様に書き換え
 - JavaScriptの効率化
 - host_permissionsの最小化
 - escapeHtmlの徹底
-- 検索ロジック切り替え？（GoogleとDuckDuckGoとか）
+- 検索ロジック切り替え（GoogleとDuckDuckGoとか）
 - カラースキームの切り替え
-- 検索中インジケーターをもう少し滑らかにする
+- 検索中のインジケーターをもう少し滑らかにする
 - 入力文字数に応じて入力欄高さを変更しEnter送信時に入力欄高さを戻す
 - 会話履歴クリアボタン
 - 検索ON/OFF切り替え
