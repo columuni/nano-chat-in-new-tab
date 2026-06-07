@@ -37,7 +37,7 @@ function setStatus(state, text) {
 }
 
 // =======================================
-// Gemini Nano 初期化
+// Gemini Nano初期化
 // =======================================
 async function initAI()
  {
@@ -160,15 +160,22 @@ function showDownloadPrompt() {
 // =======================================
 // テキストエリア自動リサイズ
 // =======================================
-searchInput.addEventListener('input', () => {
+function adjustInputHeight() {
   searchInput.style.height = 'auto';
+  // paddingやborderの分を考慮しつつ、入力内容に合わせて高さを設定（最大180px）
   searchInput.style.height = Math.min(searchInput.scrollHeight, 180) + 'px';
-});
+}
+
+// 入力時にリアルタイムで高さを変更
+searchInput.addEventListener('input', adjustInputHeight);
 
 searchInput.addEventListener('keydown', (e) => {
+  // Enterキー単体での送信時のみリサイズと送信を実行
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    if (!sendBtn.disabled) handleSubmit();
+    if (!sendBtn.disabled) {
+      handleSubmit();
+    }
   }
 });
 
@@ -433,12 +440,13 @@ function markdownToHtml(text) {
 // メイン処理
 // =======================================
 async function handleSubmit() {
+  // 送信前に入力値を取得
   const userInput = searchInput.value.trim();
   if (!userInput || !isReady) return;
 
-  // 入力クリア
+  // 入力クリアと高さの自動リセット
   searchInput.value = '';
-  searchInput.style.height = 'auto';
+  adjustInputHeight();
   sendBtn.disabled = true;
   setStatus('loading', '処理中...');
 
@@ -497,13 +505,11 @@ async function handleSubmit() {
       fullText += chunk;
       const html = markdownToHtml(fullText);
       const cursorHtml = '<span class="streaming-cursor"></span>';
-      // </li> または </ul> で終わる場合は最後の </li> の直前に差し込む
-      // それ以外は末尾に追加
+      
       let injected;
       if (/<\/li>$/.test(html)) {
         injected = html.replace(/(<\/li>)$/, `${cursorHtml}$1`);
       } else if (/<\/ul>$/.test(html)) {
-        // </ul>の場合は最後の</li>の直前に差し込む
         injected = html.replace(/(<\/li>)(<\/ul>)$/, `${cursorHtml}$1$2`);
       } else {
         injected = html + cursorHtml;
