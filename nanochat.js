@@ -407,8 +407,8 @@ function markdownToHtml(text) {
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     // 見出し h1
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // 太字
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // リンク
+    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     // 箇条書き
     .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
     // li をまとめて ul で囲む
