@@ -409,12 +409,22 @@ function markdownToHtml(text) {
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     // リンク
     .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    // 太字
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     // 箇条書き
     .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
     // li をまとめて ul で囲む
     .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    // 空行を段落区切りに
-    .replace(/\n{2,}/g, '\n\n')
+    // 見出しタグ前後の余分な改行を除去
+    .replace(/\n?(<\/?h[123]>)\n?/g, '$1')
+    // ulタグ前後の余分な改行を除去
+    .replace(/\n?(<\/?ul>)\n?/g, '$1')
+    // liタグ前後の余分な改行を除去
+    .replace(/\n?(<\/?li>)\n?/g, '$1')
+    // 連続する改行を1つに圧縮
+    .replace(/\n{2,}/g, '\n')
+    // ul の後の余分な br を除去
+    .replace(/<\/ul><br>/g, '</ul>')
     // 残りの改行を br に
     .replace(/\n/g, '<br>');
 }
@@ -477,7 +487,7 @@ async function handleSubmit() {
 
     // Step 4: Gemini Nanoで回答生成
     const answerDiv = document.createElement('div');
-    answerDiv.className = 'ai-answer streaming';
+    answerDiv.className = 'ai-answer';
     aiBody.appendChild(answerDiv);
 
     const stream = aiSession.promptStreaming(prompt);
@@ -485,12 +495,26 @@ async function handleSubmit() {
 
     for await (const chunk of stream) {
       fullText += chunk;
-      answerDiv.innerHTML = markdownToHtml(fullText);
+      const html = markdownToHtml(fullText);
+      const cursorHtml = '<span class="streaming-cursor"></span>';
+      // </li> または </ul> で終わる場合は最後の </li> の直前に差し込む
+      // それ以外は末尾に追加
+      let injected;
+      if (/<\/li>$/.test(html)) {
+        injected = html.replace(/(<\/li>)$/, `${cursorHtml}$1`);
+      } else if (/<\/ul>$/.test(html)) {
+        // </ul>の場合は最後の</li>の直前に差し込む
+        injected = html.replace(/(<\/li>)(<\/ul>)$/, `${cursorHtml}$1$2`);
+      } else {
+        injected = html + cursorHtml;
+      }
+      answerDiv.innerHTML = injected;
 
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
 
-    answerDiv.classList.remove('streaming');
+    // カーソルを除去して最終テキストを確定
+    answerDiv.innerHTML = markdownToHtml(fullText);
 
     // 会話履歴に追加
     chatHistory.push({ role: 'user', content: userInput });
