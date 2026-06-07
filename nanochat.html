@@ -336,7 +336,35 @@
       line-height: 1.85;
       color: var(--text-primary);
       font-weight: 300;
-      white-space: pre-wrap;
+    }
+
+    .ai-answer h1, .ai-answer h2, .ai-answer h3 {
+      font-weight: 500;
+      margin: 12px 0 6px;
+      color: var(--text-primary);
+    }
+
+    .ai-answer h1 { font-size: 16px; }
+    .ai-answer h2 { font-size: 15px; }
+    .ai-answer h3 { font-size: 14px; }
+
+    .ai-answer strong {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .ai-answer ul {
+      padding-left: 20px;
+      margin: 6px 0;
+    }
+
+    .ai-answer li {
+      margin-bottom: 4px;
+    }
+
+    .ai-answer br + br {
+      display: block;
+      margin-top: 6px;
     }
 
     .ai-answer.streaming::after {

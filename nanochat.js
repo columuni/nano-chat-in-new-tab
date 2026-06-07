@@ -399,6 +399,26 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function markdownToHtml(text) {
+  return escapeHtml(text)
+    // 見出し h3
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    // 見出し h2
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    // 見出し h1
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // 太字
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 箇条書き
+    .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
+    // li をまとめて ul で囲む
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    // 空行を段落区切りに
+    .replace(/\n{2,}/g, '\n\n')
+    // 残りの改行を br に
+    .replace(/\n/g, '<br>');
+}
+
 // =======================================
 // メイン処理
 // =======================================
@@ -465,7 +485,7 @@ async function handleSubmit() {
 
     for await (const chunk of stream) {
       fullText += chunk;
-      answerDiv.textContent = fullText;
+      answerDiv.innerHTML = markdownToHtml(fullText);
 
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
