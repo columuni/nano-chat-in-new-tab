@@ -103,16 +103,16 @@ nano-chat-in-new-tab/
 
 ## TODO
 
-- CSSを最新のネスト仕様に書き換え
-- JavaScriptの効率化
-- host_permissionsの最小化
-- escapeHtmlの徹底
-- 検索ロジック切り替え（GoogleとDuckDuckGoとか）
-- カラースキームの切り替え
-- 検索中のインジケーターをもう少し滑らかにする
-- 会話履歴クリアボタン
-- 検索ON/OFF切り替え
-- 初回起動オンボーディング
+- [ ] CSSを最新のネスト仕様に書き換え
+- [ ] JavaScriptの効率化
+- [ ] host_permissionsの最小化
+- [ ] escapeHtmlの徹底
+- [ ] 検索ロジック切り替え（GoogleとDuckDuckGoとか）
+- [ ] カラースキームの切り替え
+- [ ] 検索中のインジケーターをもう少し滑らかにする
+- [ ] 会話履歴クリアボタン
+- [ ] 検索ON/OFF切り替え
+- [ ] 初回起動オンボーディング
 
 ---
 
