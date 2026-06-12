@@ -31,59 +31,31 @@ const sendBtn = document.getElementById('sendBtn');
 const searchInput = document.getElementById('searchInput');
 const conversation = document.getElementById('conversation');
 
-function setStatus(state, text) {
-  statusDot.className = `status-dot ${state}`;
-  statusText.textContent = text;
-}
+const STATUS_MESSAGES = {
+  NO_LANGUAGE_MODEL: 'Gemini Nanoが利用できません（Chrome 148以降が必要です）',
+  UNAVAILABLE: 'このデバイスではGemini Nanoを使用できません',
+  DOWNLOAD_REQUIRED: 'Gemini Nanoのダウンロードが必要です',
+  STARTING: '起動中...',
+  READY: 'Gemini Nano準備完了',
+};
 
-// =======================================
-// Gemini Nano初期化
-// =======================================
-async function initAI()
- {
-  // Chrome 148以降のAPIチェック
-  if (!('LanguageModel' in self)) {
-    setStatus('error', 'Gemini Nanoが利用できません（Chrome 148以降が必要です）');
-    return;
-  }
-
-  try {
-    const availability = await LanguageModel.availability();
-
-    if (availability === 'unavailable') {
-      setStatus('error', 'このデバイスではGemini Nanoを使用できません');
-      return;
-    }
-
-    if (availability === 'downloadable' || availability === 'downloading') {
-      setStatus('loading', 'Gemini Nanoのダウンロードが必要です');
-      showDownloadPrompt();
-    return;
-}
-
-    // セッション作成
-    aiSession = await LanguageModel.create({
-      systemPrompt: `あなたは親切で賢いAIアシスタントです。日本語で会話します。
+const PROMPTS = {
+  AI_ASSISTANT_READY: `あなたは親切で賢いAIアシスタントです。日本語で会話します。
     以下のルールに従ってください：
     - 会話の文脈を踏まえて自然に回答してください
     - Google検索結果が提供された場合はその内容を参考に回答してください
     - 箇条書きや段落を適切に使い、読みやすく整理してください
     - 情報源が不明確な場合はその旨を伝えてください
     - 余計な前置きは省いて、直接回答してください`,
-    });
-
-    isReady = true;
-    setStatus('ready', 'Gemini Nano準備完了');
-    sendBtn.disabled = false;
-    searchInput.focus();
-
-    // 判断用セッションを別途作成
-    judgeSession = await LanguageModel.create({
-      systemPrompt: `You are a classifier. Answer only "yes" or "no".`,
-    });
-	
-	querySession = await LanguageModel.create({
-      systemPrompt: `
+  AI_ASSISTANT_DOWNLOAD: `あなたは親切で賢いAIアシスタントです。日本語で会話します。
+      以下のルールに従ってください：
+      - 会話の文脈を踏まえて自然に回答してください
+      - Google検索結果が提供された場合はその内容を参考に回答してください
+      - 箇条書きや段落を適切に使い、読みやすく整理してください
+      - 情報源が不明確な場合はその旨を伝えてください
+      - 余計な前置きは省いて、直接回答してください`,
+  SEARCH_JUDGE: `You are a classifier. Answer only "yes" or "no".`,
+  QUERY_READY: `
     あなたは検索クエリー最適化器です。
 
     ルール:
@@ -94,7 +66,76 @@ async function initAI()
     - Google検索向けに簡潔化
     - 日本語を維持
     `,
-});
+  QUERY_DOWNLOAD: `
+      あなたは検索クエリー最適化器です。
+
+      ルール:
+      - 出力は検索クエリーのみ
+      - 説明禁止
+      - 引用符禁止
+      - 会話禁止
+      - Google検索向けに簡潔化
+      - 日本語を維持
+      `,
+};
+
+function setStatus(state, text) {
+  statusDot.className = `status-dot ${state}`;
+  statusText.textContent = text;
+}
+
+function markAIReady() {
+  isReady = true;
+  setStatus('ready', STATUS_MESSAGES.READY);
+  sendBtn.disabled = false;
+  searchInput.focus();
+}
+
+async function createAISessions({ assistantPrompt, queryPrompt, onPrimarySessionReady }) {
+  aiSession = await LanguageModel.create({
+    systemPrompt: assistantPrompt,
+  });
+
+  onPrimarySessionReady();
+
+  judgeSession = await LanguageModel.create({
+    systemPrompt: PROMPTS.SEARCH_JUDGE,
+  });
+
+  querySession = await LanguageModel.create({
+    systemPrompt: queryPrompt,
+  });
+}
+
+// =======================================
+// Gemini Nano初期化
+// =======================================
+async function initAI() {
+  // Chrome 148以降のAPIチェック
+  if (!('LanguageModel' in self)) {
+    setStatus('error', STATUS_MESSAGES.NO_LANGUAGE_MODEL);
+    return;
+  }
+
+  try {
+    const availability = await LanguageModel.availability();
+
+    if (availability === 'unavailable') {
+      setStatus('error', STATUS_MESSAGES.UNAVAILABLE);
+      return;
+    }
+
+    if (availability === 'downloadable' || availability === 'downloading') {
+      setStatus('loading', STATUS_MESSAGES.DOWNLOAD_REQUIRED);
+      showDownloadPrompt();
+      return;
+    }
+
+    await createAISessions({
+      assistantPrompt: PROMPTS.AI_ASSISTANT_READY,
+      queryPrompt: PROMPTS.QUERY_READY,
+      onPrimarySessionReady: markAIReady,
+    });
 
   } catch (err) {
     setStatus('error', `初期化エラー: ${err.message}`);
@@ -118,37 +159,12 @@ function showDownloadPrompt() {
   `;
   btn.addEventListener('click', async () => {
     btn.remove();
-    setStatus('loading', '起動中...');
+    setStatus('loading', STATUS_MESSAGES.STARTING);
     try {
-      aiSession = await LanguageModel.create({
-        systemPrompt: `あなたは親切で賢いAIアシスタントです。日本語で会話します。
-      以下のルールに従ってください：
-      - 会話の文脈を踏まえて自然に回答してください
-      - Google検索結果が提供された場合はその内容を参考に回答してください
-      - 箇条書きや段落を適切に使い、読みやすく整理してください
-      - 情報源が不明確な場合はその旨を伝えてください
-      - 余計な前置きは省いて、直接回答してください`,
-      });
-      isReady = true;
-      setStatus('ready', 'Gemini Nano準備完了');
-      sendBtn.disabled = false;
-      searchInput.focus();
-      judgeSession = await LanguageModel.create({
-        systemPrompt: `You are a classifier. Answer only "yes" or "no".`,
-      });
-
-      querySession = await LanguageModel.create({
-        systemPrompt: `
-      あなたは検索クエリー最適化器です。
-
-      ルール:
-      - 出力は検索クエリーのみ
-      - 説明禁止
-      - 引用符禁止
-      - 会話禁止
-      - Google検索向けに簡潔化
-      - 日本語を維持
-      `,
+      await createAISessions({
+        assistantPrompt: PROMPTS.AI_ASSISTANT_DOWNLOAD,
+        queryPrompt: PROMPTS.QUERY_DOWNLOAD,
+        onPrimarySessionReady: markAIReady,
       });
     } catch (err) {
       setStatus('error', `初期化エラー: ${err.message}`);
