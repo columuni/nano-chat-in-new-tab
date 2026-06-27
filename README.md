@@ -89,7 +89,6 @@ git clone https://github.com/columuni/nano-chat-in-new-tab.git
 ## TODO
 
 - CSSを最新のネスト仕様に書き換え
-- Markdown変換処理とescapeHtmlの整理
 - 検索中のインジケーターをもう少し滑らかにする
 - 初回起動オンボーディング
 - Gemini Nanoの回答中に取り消しボタンを実装する（送信ボタンに被せる）

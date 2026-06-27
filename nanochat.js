@@ -545,40 +545,84 @@ function addGoogleLink(body, query) {
 }
 
 function escapeHtml(str) {
-  return str
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeAttribute(str) {
+  return escapeHtml(str).replace(/`/g, '&#96;');
+}
+
+function isSafeHttpUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function renderBoldMarkdown(escapedText) {
+  return escapedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+function renderInlineMarkdown(text) {
+  const links = [];
+  const textWithLinkTokens = text.replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, (match, label, url) => {
+    if (!isSafeHttpUrl(url)) return match;
+
+    const token = `\u0000LINK_${links.length}\u0000`;
+    const linkText = renderBoldMarkdown(escapeHtml(label));
+    links.push(`<a href="${escapeAttribute(url)}" target="_blank" rel="noopener">${linkText}</a>`);
+    return token;
+  });
+
+  return renderBoldMarkdown(escapeHtml(textWithLinkTokens))
+    .replace(/\u0000LINK_(\d+)\u0000/g, (_, index) => links[Number(index)] ?? '');
 }
 
 function markdownToHtml(text) {
-  return escapeHtml(text)
-    // 見出し h3
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    // 見出し h2
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    // 見出し h1
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // リンク
-    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    // 太字
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // 箇条書き
-    .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
-    // li をまとめて ul で囲む
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    // 見出しタグ前後の余分な改行を除去
+  const parts = [];
+  let listItems = [];
+
+  const flushList = () => {
+    if (listItems.length === 0) return;
+    parts.push(`<ul>${listItems.map(item => `<li>${item}</li>`).join('')}</ul>`);
+    listItems = [];
+  };
+
+  String(text).split('\n').forEach((line) => {
+    const headingMatch = /^(#{1,3}) (.+)$/.exec(line);
+    const listMatch = /^[\-\*] (.+)$/.exec(line);
+
+    if (listMatch) {
+      listItems.push(renderInlineMarkdown(listMatch[1]));
+      return;
+    }
+
+    flushList();
+
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      parts.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      return;
+    }
+
+    parts.push(renderInlineMarkdown(line));
+  });
+
+  flushList();
+
+  return parts.join('\n')
     .replace(/\n?(<\/?h[123]>)\n?/g, '$1')
-    // ulタグ前後の余分な改行を除去
     .replace(/\n?(<\/?ul>)\n?/g, '$1')
-    // liタグ前後の余分な改行を除去
     .replace(/\n?(<\/?li>)\n?/g, '$1')
-    // 連続する改行を1つに圧縮
     .replace(/\n{2,}/g, '\n')
-    // ul の後の余分な br を除去
     .replace(/<\/ul><br>/g, '</ul>')
-    // 残りの改行を br に
     .replace(/\n/g, '<br>');
 }
 
