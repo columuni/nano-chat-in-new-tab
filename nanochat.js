@@ -412,7 +412,11 @@ function addSearchResults(body, results) {
 
   const div = document.createElement('div');
   div.className = 'search-results';
-  div.innerHTML = `<div class="search-results-label">検索結果</div>`;
+
+  const label = document.createElement('div');
+  label.className = 'search-results-label';
+  label.textContent = '検索結果';
+  div.appendChild(label);
 
   results.slice(0, MAX_DISPLAYED_SEARCH_RESULTS).forEach((r, i) => {
     const item = document.createElement('a');
@@ -421,13 +425,26 @@ function addSearchResults(body, results) {
     item.target = '_blank';
     item.rel = 'noopener';
     const domain = (() => { try { return new URL(r.url).hostname; } catch { return r.url; } })();
-    item.innerHTML = `
-      <span class="result-num">${i + 1}</span>
-      <div class="result-content">
-        <div class="result-title">${escapeHtml(r.title)}</div>
-        <div class="result-url">${escapeHtml(domain)}</div>
-      </div>
-    `;
+
+    const num = document.createElement('span');
+    num.className = 'result-num';
+    num.textContent = i + 1;
+
+    const content = document.createElement('div');
+    content.className = 'result-content';
+
+    const title = document.createElement('div');
+    title.className = 'result-title';
+    title.textContent = r.title;
+
+    const url = document.createElement('div');
+    url.className = 'result-url';
+    url.textContent = domain;
+
+    content.appendChild(title);
+    content.appendChild(url);
+    item.appendChild(num);
+    item.appendChild(content);
     div.appendChild(item);
   });
 
