@@ -37,6 +37,10 @@ const conversation = document.getElementById('conversation');
 const clearChatBtn = document.getElementById('clearChatBtn');
 const activityIndicator = document.getElementById('activityIndicator');
 const activityText = document.getElementById('activityText');
+const onboarding = document.getElementById('onboarding');
+const onboardingBtn = document.getElementById('onboardingBtn');
+
+const ONBOARDING_STORAGE_KEY = 'nanochat:onboarding:v1';
 
 const STATUS_MESSAGES = {
   NO_LANGUAGE_MODEL: 'Gemini Nanoが利用できません（Chrome 148以降が必要です）',
@@ -128,13 +132,45 @@ function markAIReady() {
   searchInput.focus();
 }
 
+function hasConversationMessages() {
+  return conversation.querySelector('.message') !== null;
+}
+
+function hasDismissedOnboarding() {
+  try {
+    return localStorage.getItem(ONBOARDING_STORAGE_KEY) === 'dismissed';
+  } catch {
+    return false;
+  }
+}
+
+function rememberOnboardingDismissed() {
+  try {
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, 'dismissed');
+  } catch {
+    // localStorageが使えない環境でもチャット自体は動かす。
+  }
+}
+
+function showOnboardingIfNeeded() {
+  onboarding.hidden = hasDismissedOnboarding();
+  updateClearChatButtonState();
+}
+
+function dismissOnboarding() {
+  rememberOnboardingDismissed();
+  onboarding.hidden = true;
+  updateClearChatButtonState();
+}
+
 function updateClearChatButtonState() {
-  clearChatBtn.disabled = isProcessing || conversation.children.length === 0;
+  clearChatBtn.disabled = isProcessing || !hasConversationMessages();
 }
 
 function clearConversation() {
   chatHistory = [];
-  conversation.replaceChildren();
+  conversation.querySelectorAll('.message').forEach((message) => message.remove());
+  showOnboardingIfNeeded();
   setStatus('ready', STATUS_MESSAGES.READY);
   hideActivity();
   updateClearChatButtonState();
@@ -309,6 +345,10 @@ function handleSendButtonClick() {
 
 sendBtn.addEventListener('click', handleSendButtonClick);
 clearChatBtn.addEventListener('click', clearConversation);
+onboardingBtn.addEventListener('click', () => {
+  dismissOnboarding();
+  searchInput.focus();
+});
 
 // =======================================
 // Google検索の実行
@@ -704,6 +744,8 @@ function scrollToBottom() {
 }
 
 function prepareUserTurn(userInput) {
+  dismissOnboarding();
+
   // 入力クリアと高さの自動リセット
   searchInput.value = '';
   adjustInputHeight();
@@ -920,4 +962,5 @@ function buildHistoryText() {
 // =======================================
 // 起動
 // =======================================
+showOnboardingIfNeeded();
 initAI();

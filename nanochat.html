@@ -280,6 +280,59 @@
 	  overflow-y: visible;
     }
 
+    .onboarding {
+      padding: 18px 20px;
+      background: rgba(24, 24, 28, 0.78);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      animation: fadeUp 0.35s ease both;
+    }
+
+    .onboarding[hidden] {
+      display: none;
+    }
+
+    .onboarding-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .onboarding-title {
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .onboarding-text {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+    }
+
+    .onboarding-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 12px;
+      padding: 8px 12px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+
+    .onboarding-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--result-bg);
+    }
+
     .message {
       animation: fadeUp 0.35s ease both;
     }
@@ -552,7 +605,16 @@
       </button>
     </div>
 
-    <div class="conversation" id="conversation"></div>
+    <div class="conversation" id="conversation">
+      <div class="onboarding" id="onboarding" hidden>
+        <div class="onboarding-label">First Start</div>
+        <div class="onboarding-title">下の入力欄から始められます</div>
+        <div class="onboarding-text">
+          Gemini Nanoの準備が終わると送信できます。必要なときだけGoogle検索を使って回答します。
+        </div>
+        <button class="onboarding-btn" id="onboardingBtn" type="button">はじめる</button>
+      </div>
+    </div>
 
     <div class="search-wrapper">
       <div class="activity-indicator" id="activityIndicator" aria-live="polite" aria-hidden="true">
