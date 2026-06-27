@@ -42,6 +42,18 @@ const onboardingBtn = document.getElementById('onboardingBtn');
 
 const ONBOARDING_STORAGE_KEY = 'nanochat:onboarding:v1';
 
+const EXPECTED_TEXT_INPUTS = [{ type: 'text', languages: ['ja', 'en'] }];
+const JAPANESE_TEXT_OUTPUTS = [{ type: 'text', languages: ['ja'] }];
+const ENGLISH_TEXT_OUTPUTS = [{ type: 'text', languages: ['en'] }];
+const JAPANESE_SESSION_LANGUAGE_OPTIONS = {
+  expectedInputs: EXPECTED_TEXT_INPUTS,
+  expectedOutputs: JAPANESE_TEXT_OUTPUTS,
+};
+const ENGLISH_SESSION_LANGUAGE_OPTIONS = {
+  expectedInputs: EXPECTED_TEXT_INPUTS,
+  expectedOutputs: ENGLISH_TEXT_OUTPUTS,
+};
+
 const STATUS_MESSAGES = {
   NO_LANGUAGE_MODEL: 'Gemini Nanoが利用できません（Chrome 148以降が必要です）',
   UNAVAILABLE: 'このデバイスではGemini Nanoを使用できません',
@@ -228,20 +240,27 @@ function isAbortError(err) {
   return err?.name === 'AbortError';
 }
 
+function createLanguageModelOptions(systemPrompt, languageOptions) {
+  return {
+    ...languageOptions,
+    systemPrompt,
+  };
+}
+
 async function createAISessions({ assistantPrompt, queryPrompt, onPrimarySessionReady }) {
-  aiSession = await LanguageModel.create({
-    systemPrompt: assistantPrompt,
-  });
+  aiSession = await LanguageModel.create(
+    createLanguageModelOptions(assistantPrompt, JAPANESE_SESSION_LANGUAGE_OPTIONS)
+  );
 
   onPrimarySessionReady();
 
-  judgeSession = await LanguageModel.create({
-    systemPrompt: PROMPTS.SEARCH_JUDGE,
-  });
+  judgeSession = await LanguageModel.create(
+    createLanguageModelOptions(PROMPTS.SEARCH_JUDGE, ENGLISH_SESSION_LANGUAGE_OPTIONS)
+  );
 
-  querySession = await LanguageModel.create({
-    systemPrompt: queryPrompt,
-  });
+  querySession = await LanguageModel.create(
+    createLanguageModelOptions(queryPrompt, JAPANESE_SESSION_LANGUAGE_OPTIONS)
+  );
 }
 
 // =======================================
@@ -255,7 +274,7 @@ async function initAI() {
   }
 
   try {
-    const availability = await LanguageModel.availability();
+    const availability = await LanguageModel.availability(JAPANESE_SESSION_LANGUAGE_OPTIONS);
 
     if (availability === 'unavailable') {
       setStatus('error', STATUS_MESSAGES.UNAVAILABLE);
