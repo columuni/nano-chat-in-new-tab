@@ -476,6 +476,23 @@ function addSearchingIndicator(body, text) {
   return div;
 }
 
+function showLoadingIndicator(body, text) {
+  const indicator = addSearchingIndicator(body, text);
+  showActivity('loading', text);
+  scrollToBottom();
+  return indicator;
+}
+
+async function runWithLoadingIndicator(body, text, task) {
+  const indicator = showLoadingIndicator(body, text);
+
+  try {
+    return await task();
+  } finally {
+    indicator.remove();
+  }
+}
+
 function addSearchResults(body, results) {
   if (!results || results.length === 0) return;
 
@@ -652,17 +669,20 @@ function prepareUserTurn(userInput) {
 
 async function buildAnswerPrompt(aiBody, userInput) {
   // Step 1: 検索が必要か判断
-  const indicator1 = addSearchingIndicator(aiBody, INDICATOR_MESSAGES.THINKING);
-  showActivity('loading', INDICATOR_MESSAGES.THINKING);
-  scrollToBottom();
-  const shouldSearch = await needsSearch(userInput);
-  indicator1.remove();
+  const shouldSearch = await runWithLoadingIndicator(
+    aiBody,
+    INDICATOR_MESSAGES.THINKING,
+    () => needsSearch(userInput)
+  );
 
   if (shouldSearch) {
     return buildPromptWithSearch(aiBody, userInput);
   }
 
-  // 検索不要：会話履歴を含めてそのまま回答
+  return buildPromptWithoutSearch(userInput);
+}
+
+function buildPromptWithoutSearch(userInput) {
   return {
     prompt: `${buildHistoryText()}ユーザー: ${userInput}`,
     optimizedQuery: null,
@@ -671,18 +691,19 @@ async function buildAnswerPrompt(aiBody, userInput) {
 
 async function buildPromptWithSearch(aiBody, userInput) {
   // Step 2: クエリー最適化
-  const indicator2 = addSearchingIndicator(aiBody, INDICATOR_MESSAGES.OPTIMIZING_QUERY);
-  showActivity('loading', INDICATOR_MESSAGES.OPTIMIZING_QUERY);
-  scrollToBottom();
-  const optimizedQuery = await optimizeQuery(userInput);
-  indicator2.remove();
+  const optimizedQuery = await runWithLoadingIndicator(
+    aiBody,
+    INDICATOR_MESSAGES.OPTIMIZING_QUERY,
+    () => optimizeQuery(userInput)
+  );
 
   // Step 3: Google検索
-  const indicator3 = addSearchingIndicator(aiBody, INDICATOR_MESSAGES.SEARCHING(optimizedQuery));
-  showActivity('loading', INDICATOR_MESSAGES.SEARCHING(optimizedQuery));
-  scrollToBottom();
-  const { results, snippets } = await fetchGoogleSearch(optimizedQuery);
-  indicator3.remove();
+  const searchMessage = INDICATOR_MESSAGES.SEARCHING(optimizedQuery);
+  const { results, snippets } = await runWithLoadingIndicator(
+    aiBody,
+    searchMessage,
+    () => fetchGoogleSearch(optimizedQuery)
+  );
 
   // 検索結果を表示
   addSearchResults(aiBody, results);
@@ -705,6 +726,14 @@ function addAnswerContainer(aiBody) {
   answerDiv.className = 'ai-answer';
   aiBody.appendChild(answerDiv);
   return answerDiv;
+}
+
+function prepareAnswerGeneration(aiBody) {
+  setStatus('loading', STATUS_MESSAGES.GENERATING);
+  const waitingIndicator = showLoadingIndicator(aiBody, INDICATOR_MESSAGES.GENERATING);
+  const answerDiv = addAnswerContainer(aiBody);
+  scrollToBottom();
+  return { answerDiv, waitingIndicator };
 }
 
 function injectStreamingCursor(html) {
@@ -752,6 +781,25 @@ function saveTurnToHistory(userInput, fullText) {
   chatHistory.push({ role: 'assistant', content: fullText });
 }
 
+async function generateAssistantTurn(aiBody, userInput) {
+  const { prompt, optimizedQuery } = await buildAnswerPrompt(aiBody, userInput);
+  const { answerDiv, waitingIndicator } = prepareAnswerGeneration(aiBody);
+  const fullText = await streamAnswer(prompt, answerDiv, waitingIndicator);
+
+  return { fullText, optimizedQuery };
+}
+
+function completeAssistantTurn(aiBody, userInput, fullText, optimizedQuery) {
+  saveTurnToHistory(userInput, fullText);
+
+  if (optimizedQuery) {
+    addGoogleLink(aiBody, optimizedQuery);
+  }
+
+  scrollToBottom();
+  showCompletionStatus();
+}
+
 function showSubmissionError(aiBody, err) {
   const errorDiv = document.createElement('div');
   errorDiv.className = 'error-msg';
@@ -773,27 +821,8 @@ async function handleSubmit() {
   const aiBody = prepareUserTurn(userInput);
 
   try {
-    const { prompt, optimizedQuery } = await buildAnswerPrompt(aiBody, userInput);
-
-    // Step 4: Gemini Nanoで回答生成
-    setStatus('loading', STATUS_MESSAGES.GENERATING);
-    showActivity('loading', STATUS_MESSAGES.GENERATING);
-    const generatingIndicator = addSearchingIndicator(aiBody, INDICATOR_MESSAGES.GENERATING);
-    const answerDiv = addAnswerContainer(aiBody);
-    scrollToBottom();
-    const fullText = await streamAnswer(prompt, answerDiv, generatingIndicator);
-
-    // 会話履歴に追加
-    saveTurnToHistory(userInput, fullText);
-
-    // 検索した場合はGoogleリンクを表示
-    if (optimizedQuery) {
-      addGoogleLink(aiBody, optimizedQuery);
-    }
-
-    scrollToBottom();
-    showCompletionStatus();
-
+    const { fullText, optimizedQuery } = await generateAssistantTurn(aiBody, userInput);
+    completeAssistantTurn(aiBody, userInput, fullText, optimizedQuery);
   } catch (err) {
     showSubmissionError(aiBody, err);
   } finally {
