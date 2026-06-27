@@ -377,15 +377,26 @@ function addUserMessage(text) {
 function addAIMessage() {
   const div = document.createElement('div');
   div.className = 'message ai';
-  div.innerHTML = `
-    <div class="ai-header">
-      <span class="ai-label">Gemini Nano</span>
-      <div class="ai-divider"></div>
-    </div>
-    <div class="ai-body"></div>
-  `;
+
+  const header = document.createElement('div');
+  header.className = 'ai-header';
+
+  const label = document.createElement('span');
+  label.className = 'ai-label';
+  label.textContent = 'Gemini Nano';
+
+  const divider = document.createElement('div');
+  divider.className = 'ai-divider';
+
+  const aiBody = document.createElement('div');
+  aiBody.className = 'ai-body';
+
+  header.appendChild(label);
+  header.appendChild(divider);
+  div.appendChild(header);
+  div.appendChild(aiBody);
   conversation.appendChild(div);
-  return div.querySelector('.ai-body');
+  return aiBody;
 }
 
 function addSearchingIndicator(body, text) {
