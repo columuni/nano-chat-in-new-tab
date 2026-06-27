@@ -37,6 +37,19 @@ const STATUS_MESSAGES = {
   DOWNLOAD_REQUIRED: 'Gemini Nanoのダウンロードが必要です',
   STARTING: '起動中...',
   READY: 'Gemini Nano準備完了',
+  PROCESSING: '処理中...',
+  ERROR: 'エラーが発生しました',
+};
+
+const INDICATOR_MESSAGES = {
+  THINKING: '考え中...',
+  OPTIMIZING_QUERY: 'クエリーを最適化中...',
+  SEARCHING: (query) => `「${query}」を検索中...`,
+};
+
+const ERROR_MESSAGES = {
+  INIT: (message) => `初期化エラー: ${message}`,
+  SUBMISSION: (message) => `エラーが発生しました: ${message}`,
 };
 
 const PROMPTS = {
@@ -146,7 +159,7 @@ async function initAI() {
     });
 
   } catch (err) {
-    setStatus('error', `初期化エラー: ${err.message}`);
+    setStatus('error', ERROR_MESSAGES.INIT(err.message));
     console.error(err);
   }
 }
@@ -175,7 +188,7 @@ function showDownloadPrompt() {
         onPrimarySessionReady: markAIReady,
       });
     } catch (err) {
-      setStatus('error', `初期化エラー: ${err.message}`);
+      setStatus('error', ERROR_MESSAGES.INIT(err.message));
     }
   });
   bar.appendChild(btn);
@@ -533,7 +546,7 @@ function prepareUserTurn(userInput) {
   searchInput.value = '';
   adjustInputHeight();
   sendBtn.disabled = true;
-  setStatus('loading', '処理中...');
+  setStatus('loading', STATUS_MESSAGES.PROCESSING);
 
   // ユーザーメッセージ表示
   addUserMessage(userInput);
@@ -548,7 +561,7 @@ function prepareUserTurn(userInput) {
 
 async function buildAnswerPrompt(aiBody, userInput) {
   // Step 1: 検索が必要か判断
-  const indicator1 = addSearchingIndicator(aiBody, '考え中...');
+  const indicator1 = addSearchingIndicator(aiBody, INDICATOR_MESSAGES.THINKING);
   scrollToBottom();
   const shouldSearch = await needsSearch(userInput);
   indicator1.remove();
@@ -566,13 +579,13 @@ async function buildAnswerPrompt(aiBody, userInput) {
 
 async function buildPromptWithSearch(aiBody, userInput) {
   // Step 2: クエリー最適化
-  const indicator2 = addSearchingIndicator(aiBody, 'クエリーを最適化中...');
+  const indicator2 = addSearchingIndicator(aiBody, INDICATOR_MESSAGES.OPTIMIZING_QUERY);
   scrollToBottom();
   const optimizedQuery = await optimizeQuery(userInput);
   indicator2.remove();
 
   // Step 3: Google検索
-  const indicator3 = addSearchingIndicator(aiBody, `「${optimizedQuery}」を検索中...`);
+  const indicator3 = addSearchingIndicator(aiBody, INDICATOR_MESSAGES.SEARCHING(optimizedQuery));
   scrollToBottom();
   const { results, snippets } = await fetchGoogleSearch(optimizedQuery);
   indicator3.remove();
@@ -639,9 +652,9 @@ function saveTurnToHistory(userInput, fullText) {
 function showSubmissionError(aiBody, err) {
   const errorDiv = document.createElement('div');
   errorDiv.className = 'error-msg';
-  errorDiv.textContent = `エラーが発生しました: ${err.message}`;
+  errorDiv.textContent = ERROR_MESSAGES.SUBMISSION(err.message);
   aiBody.appendChild(errorDiv);
-  setStatus('error', 'エラーが発生しました');
+  setStatus('error', STATUS_MESSAGES.ERROR);
   console.error(err);
 }
 
@@ -671,7 +684,7 @@ async function handleSubmit() {
     }
 
     scrollToBottom();
-    setStatus('ready', 'Gemini Nano準備完了');
+    setStatus('ready', STATUS_MESSAGES.READY);
 
   } catch (err) {
     showSubmissionError(aiBody, err);
