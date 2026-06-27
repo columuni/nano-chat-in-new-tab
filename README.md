@@ -89,4 +89,4 @@ git clone https://github.com/columuni/nano-chat-in-new-tab.git
 
 ## TODO
 
-- CSSを最新のネスト仕様に書き換え
+- CSSを最新のネスト仕様に書き換え（将来検討）

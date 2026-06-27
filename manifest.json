@@ -12,9 +12,6 @@
   "chrome_url_overrides": {
     "newtab": "nanochat.html"
   },
-  "permissions": [
-    "aiLanguageModel"
-  ],
   "host_permissions": [
     "https://www.google.com/*"
   ]
