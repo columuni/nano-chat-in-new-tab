@@ -94,4 +94,3 @@ git clone https://github.com/columuni/nano-chat-in-new-tab.git
 - escapeHtmlの徹底
 - 検索中のインジケーターをもう少し滑らかにする
 - 初回起動オンボーディング
-- Gemini Nanoの回答待ち時に何かの動作を持たせてユーザーに対して回答待ちであることを知らせる。

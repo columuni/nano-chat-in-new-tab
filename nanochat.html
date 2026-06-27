@@ -105,6 +105,58 @@
       z-index: 100;
     }
 
+    .activity-indicator {
+      min-height: 20px;
+      margin-bottom: 8px;
+      padding: 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--text-secondary);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(4px);
+      transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+      pointer-events: none;
+    }
+
+    .activity-indicator.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .activity-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .activity-indicator.loading .activity-dot {
+      background: var(--accent);
+      animation: pulse 1s infinite;
+    }
+
+    .activity-indicator.complete .activity-dot {
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+    }
+
+    .activity-indicator.error .activity-dot {
+      background: #ff6b6b;
+    }
+
+    #activityText {
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .search-box {
       width: 100%;
       background: var(--surface);
@@ -215,7 +267,7 @@
       display: flex;
       flex-direction: column;
       gap: 20px;
-      padding-bottom: 180px;
+      padding-bottom: 212px;
 	  overflow-y: visible;
     }
 
@@ -477,6 +529,10 @@
     <div class="conversation" id="conversation"></div>
 
     <div class="search-wrapper">
+      <div class="activity-indicator" id="activityIndicator" aria-live="polite" aria-hidden="true">
+        <span class="activity-dot"></span>
+        <span id="activityText"></span>
+      </div>
       <textarea
         class="search-box"
         id="searchInput"
