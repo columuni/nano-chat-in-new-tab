@@ -24,8 +24,10 @@ let aiSession = null;      // 会話用
 let judgeSession = null;   // 検索判断用
 let querySession = null;   // 検索クエリー生成用
 let isReady = false;
+let isProcessing = false;
 let chatHistory = [];
 let activityResetTimer = null;
+let currentAbortController = null;
 
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
@@ -45,6 +47,8 @@ const STATUS_MESSAGES = {
   PROCESSING: '処理中...',
   GENERATING: '回答生成中...',
   COMPLETE: '回答完了',
+  CANCELING: '取り消し中...',
+  CANCELED: '回答を取り消しました',
   ERROR: 'エラーが発生しました',
 };
 
@@ -119,13 +123,13 @@ function markAIReady() {
   isReady = true;
   setStatus('ready', STATUS_MESSAGES.READY);
   hideActivity();
-  sendBtn.disabled = false;
+  resetSendButton();
   updateClearChatButtonState();
   searchInput.focus();
 }
 
 function updateClearChatButtonState() {
-  clearChatBtn.disabled = sendBtn.disabled || conversation.children.length === 0;
+  clearChatBtn.disabled = isProcessing || conversation.children.length === 0;
 }
 
 function clearConversation() {
@@ -138,15 +142,54 @@ function clearConversation() {
 }
 
 function showCompletionStatus() {
-  setStatus('ready', STATUS_MESSAGES.COMPLETE);
-  showActivity('complete', STATUS_MESSAGES.COMPLETE);
+  showTemporaryReadyStatus(STATUS_MESSAGES.COMPLETE);
+}
+
+function showCancellationStatus() {
+  showTemporaryReadyStatus(STATUS_MESSAGES.CANCELED);
+}
+
+function showTemporaryReadyStatus(text) {
+  setStatus('ready', text);
+  showActivity('complete', text);
 
   activityResetTimer = setTimeout(() => {
-    if (statusText.textContent === STATUS_MESSAGES.COMPLETE) {
+    if (statusText.textContent === text) {
       setStatus('ready', STATUS_MESSAGES.READY);
     }
     hideActivity();
   }, COMPLETION_STATUS_DURATION_MS);
+}
+
+function setSendButtonCancelMode() {
+  sendBtn.classList.add('is-canceling');
+  sendBtn.disabled = false;
+  sendBtn.title = '回答を取り消す';
+  sendBtn.setAttribute('aria-label', '回答を取り消す');
+}
+
+function resetSendButton() {
+  sendBtn.classList.remove('is-canceling');
+  sendBtn.disabled = !isReady;
+  sendBtn.title = '送信';
+  sendBtn.setAttribute('aria-label', '送信');
+}
+
+function cancelCurrentTurn() {
+  if (!isProcessing || !currentAbortController) return;
+
+  setStatus('loading', STATUS_MESSAGES.CANCELING);
+  showActivity('loading', STATUS_MESSAGES.CANCELING);
+  sendBtn.disabled = true;
+  currentAbortController.abort();
+}
+
+function promptOptions(signal) {
+  return signal ? { signal } : undefined;
+}
+
+function isAbortError(err) {
+  return err?.name === 'AbortError';
 }
 
 async function createAISessions({ assistantPrompt, queryPrompt, onPrimarySessionReady }) {
@@ -249,19 +292,28 @@ searchInput.addEventListener('keydown', (e) => {
   // Enterキー単体での送信時のみリサイズと送信を実行
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    if (!sendBtn.disabled) {
+    if (!isProcessing && !sendBtn.disabled) {
       handleSubmit();
     }
   }
 });
 
-sendBtn.addEventListener('click', handleSubmit);
+function handleSendButtonClick() {
+  if (isProcessing) {
+    cancelCurrentTurn();
+    return;
+  }
+
+  handleSubmit();
+}
+
+sendBtn.addEventListener('click', handleSendButtonClick);
 clearChatBtn.addEventListener('click', clearConversation);
 
 // =======================================
 // Google検索の実行
 // =======================================
-async function fetchGoogleSearch(query) {
+async function fetchGoogleSearch(query, signal) {
   const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=ja&num=${GOOGLE_SEARCH_RESULT_COUNT}`;
 
   try {
@@ -269,11 +321,13 @@ async function fetchGoogleSearch(query) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept-Language': 'ja,en;q=0.9',
-      }
+      },
+      signal,
     });
     const html = await response.text();
     return parseGoogleResults(html, query);
   } catch (err) {
+    if (isAbortError(err)) throw err;
     console.error('検索エラー:', err);
     return { results: [], snippets: '' };
   }
@@ -360,13 +414,14 @@ function buildFallbackSnippet(doc) {
 // =======================================
 // Google検索が必要か判断
 // =======================================
-async function needsSearch(userInput) {
+async function needsSearch(userInput, signal) {
   if (!judgeSession) return false;
 
   try {
-    const result = await judgeSession.prompt(buildNeedsSearchPrompt(userInput));
+    const result = await judgeSession.prompt(buildNeedsSearchPrompt(userInput), promptOptions(signal));
     return result.trim().toLowerCase().startsWith('yes');
-  } catch {
+  } catch (err) {
+    if (isAbortError(err)) throw err;
     return false;
   }
 }
@@ -387,15 +442,16 @@ ${userInput}
 // =======================================
 // クエリーの最適化（専用セッション使用）
 // =======================================
-async function optimizeQuery(userInput) {
+async function optimizeQuery(userInput, signal) {
   if (!querySession) return userInput;
 
   try {
-    const result = await querySession.prompt(buildOptimizeQueryPrompt(userInput));
+    const result = await querySession.prompt(buildOptimizeQueryPrompt(userInput), promptOptions(signal));
 
     return result.trim() || userInput;
 
   } catch (err) {
+    if (isAbortError(err)) throw err;
     console.error('クエリー最適化失敗:', err);
     return userInput;
   }
@@ -651,7 +707,6 @@ function prepareUserTurn(userInput) {
   // 入力クリアと高さの自動リセット
   searchInput.value = '';
   adjustInputHeight();
-  sendBtn.disabled = true;
   updateClearChatButtonState();
   setStatus('loading', STATUS_MESSAGES.PROCESSING);
   showActivity('loading', STATUS_MESSAGES.PROCESSING);
@@ -667,16 +722,16 @@ function prepareUserTurn(userInput) {
   return aiBody;
 }
 
-async function buildAnswerPrompt(aiBody, userInput) {
+async function buildAnswerPrompt(aiBody, userInput, signal) {
   // Step 1: 検索が必要か判断
   const shouldSearch = await runWithLoadingIndicator(
     aiBody,
     INDICATOR_MESSAGES.THINKING,
-    () => needsSearch(userInput)
+    () => needsSearch(userInput, signal)
   );
 
   if (shouldSearch) {
-    return buildPromptWithSearch(aiBody, userInput);
+    return buildPromptWithSearch(aiBody, userInput, signal);
   }
 
   return buildPromptWithoutSearch(userInput);
@@ -689,12 +744,12 @@ function buildPromptWithoutSearch(userInput) {
   };
 }
 
-async function buildPromptWithSearch(aiBody, userInput) {
+async function buildPromptWithSearch(aiBody, userInput, signal) {
   // Step 2: クエリー最適化
   const optimizedQuery = await runWithLoadingIndicator(
     aiBody,
     INDICATOR_MESSAGES.OPTIMIZING_QUERY,
-    () => optimizeQuery(userInput)
+    () => optimizeQuery(userInput, signal)
   );
 
   // Step 3: Google検索
@@ -702,7 +757,7 @@ async function buildPromptWithSearch(aiBody, userInput) {
   const { results, snippets } = await runWithLoadingIndicator(
     aiBody,
     searchMessage,
-    () => fetchGoogleSearch(optimizedQuery)
+    () => fetchGoogleSearch(optimizedQuery, signal)
   );
 
   // 検索結果を表示
@@ -750,8 +805,8 @@ function injectStreamingCursor(html) {
   return html + cursorHtml;
 }
 
-async function streamAnswer(prompt, answerDiv, waitingIndicator = null) {
-  const stream = aiSession.promptStreaming(prompt);
+async function streamAnswer(prompt, answerDiv, waitingIndicator = null, signal) {
+  const stream = aiSession.promptStreaming(prompt, promptOptions(signal));
   let fullText = '';
   let hasStarted = false;
 
@@ -768,10 +823,8 @@ async function streamAnswer(prompt, answerDiv, waitingIndicator = null) {
     }
   } finally {
     waitingIndicator?.remove();
+    answerDiv.innerHTML = markdownToHtml(fullText);
   }
-
-  // カーソルを除去して最終テキストを確定
-  answerDiv.innerHTML = markdownToHtml(fullText);
 
   return fullText;
 }
@@ -781,10 +834,10 @@ function saveTurnToHistory(userInput, fullText) {
   chatHistory.push({ role: 'assistant', content: fullText });
 }
 
-async function generateAssistantTurn(aiBody, userInput) {
-  const { prompt, optimizedQuery } = await buildAnswerPrompt(aiBody, userInput);
+async function generateAssistantTurn(aiBody, userInput, signal) {
+  const { prompt, optimizedQuery } = await buildAnswerPrompt(aiBody, userInput, signal);
   const { answerDiv, waitingIndicator } = prepareAnswerGeneration(aiBody);
-  const fullText = await streamAnswer(prompt, answerDiv, waitingIndicator);
+  const fullText = await streamAnswer(prompt, answerDiv, waitingIndicator, signal);
 
   return { fullText, optimizedQuery };
 }
@@ -798,6 +851,19 @@ function completeAssistantTurn(aiBody, userInput, fullText, optimizedQuery) {
 
   scrollToBottom();
   showCompletionStatus();
+}
+
+function showCancellationMessage(aiBody) {
+  const answerDiv = aiBody.querySelector('.ai-answer');
+  answerDiv?.remove();
+
+  const noticeDiv = document.createElement('div');
+  noticeDiv.className = 'notice-msg';
+  noticeDiv.textContent = STATUS_MESSAGES.CANCELED;
+  aiBody.appendChild(noticeDiv);
+
+  scrollToBottom();
+  showCancellationStatus();
 }
 
 function showSubmissionError(aiBody, err) {
@@ -816,17 +882,27 @@ function showSubmissionError(aiBody, err) {
 async function handleSubmit() {
   // 送信前に入力値を取得
   const userInput = searchInput.value.trim();
-  if (!userInput || !isReady) return;
+  if (!userInput || !isReady || isProcessing) return;
 
+  const abortController = new AbortController();
+  currentAbortController = abortController;
+  isProcessing = true;
   const aiBody = prepareUserTurn(userInput);
+  setSendButtonCancelMode();
 
   try {
-    const { fullText, optimizedQuery } = await generateAssistantTurn(aiBody, userInput);
+    const { fullText, optimizedQuery } = await generateAssistantTurn(aiBody, userInput, abortController.signal);
     completeAssistantTurn(aiBody, userInput, fullText, optimizedQuery);
   } catch (err) {
-    showSubmissionError(aiBody, err);
+    if (isAbortError(err)) {
+      showCancellationMessage(aiBody);
+    } else {
+      showSubmissionError(aiBody, err);
+    }
   } finally {
-    sendBtn.disabled = false;
+    currentAbortController = null;
+    isProcessing = false;
+    resetSendButton();
     updateClearChatButtonState();
     searchInput.focus();
   }

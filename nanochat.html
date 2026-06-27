@@ -206,7 +206,14 @@
     .send-btn:active { transform: scale(0.95); }
     .send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
 
+    .send-btn.is-canceling {
+      background: #ff6b6b;
+    }
+
     .send-btn svg { width: 14px; height: 14px; fill: white; }
+    .send-btn .cancel-icon { display: none; }
+    .send-btn.is-canceling .send-icon { display: none; }
+    .send-btn.is-canceling .cancel-icon { display: block; }
 
     /* ステータスバー */
     .status-bar {
@@ -480,6 +487,16 @@
       line-height: 1.6;
     }
 
+    .notice-msg {
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
     /* Google検索へのリンク */
     .google-link {
       display: inline-flex;
@@ -548,8 +565,9 @@
         placeholder="何でも聞いてください..."
         rows="1"
       ></textarea>
-      <button class="send-btn" id="sendBtn" disabled>
-        <svg viewBox="0 0 16 16"><path d="M1 8L15 1 8 15 7 9z"/></svg>
+      <button class="send-btn" id="sendBtn" disabled title="送信" aria-label="送信">
+        <svg class="send-icon" viewBox="0 0 16 16"><path d="M1 8L15 1 8 15 7 9z"/></svg>
+        <svg class="cancel-icon" viewBox="0 0 16 16"><path d="M4 4h8v8h-8z"/></svg>
       </button>
     </div>
 
