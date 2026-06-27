@@ -79,6 +79,14 @@ const PROMPTS = {
       `,
 };
 
+const GOOGLE_SEARCH_RESULT_COUNT = 8;
+const MAX_PARSED_SEARCH_RESULTS = 6;
+const MAX_DISPLAYED_SEARCH_RESULTS = 5;
+const FALLBACK_SNIPPET_LENGTH = 2000;
+
+const SEARCH_RESULT_SELECTORS = ['div.g', 'div[data-sokoban-container]', 'div.tF2Cxc'];
+const SEARCH_SNIPPET_SELECTORS = ['div.VwiC3b', 'span.aCOpRe', 'div.s', 'div[data-snf]'];
+
 function setStatus(state, text) {
   statusDot.className = `status-dot ${state}`;
   statusText.textContent = text;
@@ -201,7 +209,7 @@ sendBtn.addEventListener('click', handleSubmit);
 // Google検索の実行
 // =======================================
 async function fetchGoogleSearch(query) {
-  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=ja&num=8`;
+  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=ja&num=${GOOGLE_SEARCH_RESULT_COUNT}`;
 
   try {
     const response = await fetch(url, {
@@ -225,53 +233,24 @@ function parseGoogleResults(html, query) {
 
   const results = [];
   const snippetTexts = [];
-
-  // 検索結果ブロックを取得（複数のセレクターを試みる）
-  const selectors = ['div.g', 'div[data-sokoban-container]', 'div.tF2Cxc'];
-
-  let blocks = [];
-  for (const sel of selectors) {
-    blocks = doc.querySelectorAll(sel);
-    if (blocks.length > 0) break;
-  }
+  const blocks = findSearchResultBlocks(doc);
 
   // タイトルとスニペットを抽出
   let count = 0;
   blocks.forEach((block) => {
-    if (count >= 6) return;
+    if (count >= MAX_PARSED_SEARCH_RESULTS) return;
 
-    // タイトル
-    const titleEl = block.querySelector('h3');
-    const title = titleEl ? titleEl.textContent.trim() : '';
+    const result = extractSearchResult(block);
+    if (!result) return;
 
-    // URL
-    const linkEl = block.querySelector('a[href^="http"]');
-    const url = linkEl ? linkEl.href : '';
-
-    // スニペット（検索結果の説明文）
-    const snippetSelectors = ['div.VwiC3b', 'span.aCOpRe', 'div.s', 'div[data-snf]'];
-    let snippet = '';
-    for (const sEl of snippetSelectors) {
-      const el = block.querySelector(sEl);
-      if (el) {
-        snippet = el.textContent.trim();
-        break;
-      }
-    }
-
-    if (title && url) {
-      results.push({ title, url, snippet });
-      if (snippet) snippetTexts.push(`[${count + 1}] ${title}\n${snippet}`);
-      count++;
-    }
+    results.push(result);
+    if (result.snippet) snippetTexts.push(`[${count + 1}] ${result.title}\n${result.snippet}`);
+    count++;
   });
 
   // スニペットが取れなかった場合はbodyテキストから抜粋
   if (snippetTexts.length === 0) {
-    const bodyText = doc.body?.innerText || '';
-    // 不要な部分を除去して最初の2000文字
-    const cleaned = bodyText.replace(/\n{3,}/g, '\n\n').slice(0, 2000);
-    snippetTexts.push(cleaned);
+    snippetTexts.push(buildFallbackSnippet(doc));
   }
 
   return {
@@ -279,6 +258,51 @@ function parseGoogleResults(html, query) {
     snippets: snippetTexts.join('\n\n'),
     query,
   };
+}
+
+function findSearchResultBlocks(doc) {
+  // 検索結果ブロックを取得（複数のセレクターを試みる）
+  let blocks = [];
+  for (const sel of SEARCH_RESULT_SELECTORS) {
+    blocks = doc.querySelectorAll(sel);
+    if (blocks.length > 0) break;
+  }
+  return blocks;
+}
+
+function extractSearchResult(block) {
+  // タイトル
+  const titleEl = block.querySelector('h3');
+  const title = titleEl ? titleEl.textContent.trim() : '';
+
+  // URL
+  const linkEl = block.querySelector('a[href^="http"]');
+  const url = linkEl ? linkEl.href : '';
+
+  if (!title || !url) return null;
+
+  return {
+    title,
+    url,
+    snippet: extractSearchSnippet(block),
+  };
+}
+
+function extractSearchSnippet(block) {
+  // スニペット（検索結果の説明文）
+  for (const sEl of SEARCH_SNIPPET_SELECTORS) {
+    const el = block.querySelector(sEl);
+    if (el) {
+      return el.textContent.trim();
+    }
+  }
+  return '';
+}
+
+function buildFallbackSnippet(doc) {
+  const bodyText = doc.body?.innerText || '';
+  // 不要な部分を除去して最初の2000文字
+  return bodyText.replace(/\n{3,}/g, '\n\n').slice(0, FALLBACK_SNIPPET_LENGTH);
 }
 
 // =======================================
@@ -340,7 +364,12 @@ async function optimizeQuery(userInput) {
 function addUserMessage(text) {
   const div = document.createElement('div');
   div.className = 'message user';
-  div.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text;
+
+  div.appendChild(bubble);
   conversation.appendChild(div);
   return div;
 }
@@ -362,12 +391,18 @@ function addAIMessage() {
 function addSearchingIndicator(body, text) {
   const div = document.createElement('div');
   div.className = 'searching-indicator';
-  div.innerHTML = `
-    <div class="searching-dots">
-      <span></span><span></span><span></span>
-    </div>
-    <span>${text}</span>
-  `;
+
+  const dots = document.createElement('div');
+  dots.className = 'searching-dots';
+  dots.appendChild(document.createElement('span'));
+  dots.appendChild(document.createElement('span'));
+  dots.appendChild(document.createElement('span'));
+
+  const label = document.createElement('span');
+  label.textContent = text;
+
+  div.appendChild(dots);
+  div.appendChild(label);
   body.appendChild(div);
   return div;
 }
@@ -379,7 +414,7 @@ function addSearchResults(body, results) {
   div.className = 'search-results';
   div.innerHTML = `<div class="search-results-label">検索結果</div>`;
 
-  results.slice(0, 5).forEach((r, i) => {
+  results.slice(0, MAX_DISPLAYED_SEARCH_RESULTS).forEach((r, i) => {
     const item = document.createElement('a');
     item.className = 'result-item';
     item.href = r.url;
@@ -452,14 +487,11 @@ function markdownToHtml(text) {
     .replace(/\n/g, '<br>');
 }
 
-// =======================================
-// メイン処理
-// =======================================
-async function handleSubmit() {
-  // 送信前に入力値を取得
-  const userInput = searchInput.value.trim();
-  if (!userInput || !isReady) return;
+function scrollToBottom() {
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+}
 
+function prepareUserTurn(userInput) {
   // 入力クリアと高さの自動リセット
   searchInput.value = '';
   adjustInputHeight();
@@ -468,95 +500,144 @@ async function handleSubmit() {
 
   // ユーザーメッセージ表示
   addUserMessage(userInput);
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  scrollToBottom();
 
   // AIメッセージエリアを作成
   const aiBody = addAIMessage();
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  scrollToBottom();
+
+  return aiBody;
+}
+
+async function buildAnswerPrompt(aiBody, userInput) {
+  // Step 1: 検索が必要か判断
+  const indicator1 = addSearchingIndicator(aiBody, '考え中...');
+  scrollToBottom();
+  const shouldSearch = await needsSearch(userInput);
+  indicator1.remove();
+
+  if (shouldSearch) {
+    return buildPromptWithSearch(aiBody, userInput);
+  }
+
+  // 検索不要：会話履歴を含めてそのまま回答
+  return {
+    prompt: `${buildHistoryText()}ユーザー: ${userInput}`,
+    optimizedQuery: null,
+  };
+}
+
+async function buildPromptWithSearch(aiBody, userInput) {
+  // Step 2: クエリー最適化
+  const indicator2 = addSearchingIndicator(aiBody, 'クエリーを最適化中...');
+  scrollToBottom();
+  const optimizedQuery = await optimizeQuery(userInput);
+  indicator2.remove();
+
+  // Step 3: Google検索
+  const indicator3 = addSearchingIndicator(aiBody, `「${optimizedQuery}」を検索中...`);
+  scrollToBottom();
+  const { results, snippets } = await fetchGoogleSearch(optimizedQuery);
+  indicator3.remove();
+
+  // 検索結果を表示
+  addSearchResults(aiBody, results);
+  scrollToBottom();
+
+  return {
+    prompt: buildPromptFromSearchResults(userInput, snippets),
+    optimizedQuery,
+  };
+}
+
+function buildPromptFromSearchResults(userInput, snippets) {
+  return snippets
+    ? `${buildHistoryText()}ユーザーの質問: ${userInput}\n\n以下はGoogle検索結果の抜粋です：\n\n${snippets}\n\n上記の検索結果をもとに、ユーザーの質問に対して日本語で分かりやすく回答してください。`
+    : `${buildHistoryText()}ユーザーの質問: ${userInput}\n\n検索結果を取得できませんでした。あなたの知識の範囲内で回答してください。`;
+}
+
+function addAnswerContainer(aiBody) {
+  const answerDiv = document.createElement('div');
+  answerDiv.className = 'ai-answer';
+  aiBody.appendChild(answerDiv);
+  return answerDiv;
+}
+
+function injectStreamingCursor(html) {
+  const cursorHtml = '<span class="streaming-cursor"></span>';
+
+  if (/<\/li>$/.test(html)) {
+    return html.replace(/(<\/li>)$/, `${cursorHtml}$1`);
+  }
+
+  if (/<\/ul>$/.test(html)) {
+    return html.replace(/(<\/li>)(<\/ul>)$/, `${cursorHtml}$1$2`);
+  }
+
+  return html + cursorHtml;
+}
+
+async function streamAnswer(prompt, answerDiv) {
+  const stream = aiSession.promptStreaming(prompt);
+  let fullText = '';
+
+  for await (const chunk of stream) {
+    fullText += chunk;
+    answerDiv.innerHTML = injectStreamingCursor(markdownToHtml(fullText));
+
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  }
+
+  // カーソルを除去して最終テキストを確定
+  answerDiv.innerHTML = markdownToHtml(fullText);
+
+  return fullText;
+}
+
+function saveTurnToHistory(userInput, fullText) {
+  chatHistory.push({ role: 'user', content: userInput });
+  chatHistory.push({ role: 'assistant', content: fullText });
+}
+
+function showSubmissionError(aiBody, err) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-msg';
+  errorDiv.textContent = `エラーが発生しました: ${err.message}`;
+  aiBody.appendChild(errorDiv);
+  setStatus('error', 'エラーが発生しました');
+  console.error(err);
+}
+
+// =======================================
+// メイン処理
+// =======================================
+async function handleSubmit() {
+  // 送信前に入力値を取得
+  const userInput = searchInput.value.trim();
+  if (!userInput || !isReady) return;
+
+  const aiBody = prepareUserTurn(userInput);
 
   try {
-    // Step 1: 検索が必要か判断
-    const indicator1 = addSearchingIndicator(aiBody, '考え中...');
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    const shouldSearch = await needsSearch(userInput);
-    indicator1.remove();
-
-    let prompt;
-    let optimizedQuery = null;
-
-    if (shouldSearch) {
-      // Step 2: クエリー最適化
-      const indicator2 = addSearchingIndicator(aiBody, 'クエリーを最適化中...');
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-      optimizedQuery = await optimizeQuery(userInput);
-      indicator2.remove();
-
-      // Step 3: Google検索
-      const indicator3 = addSearchingIndicator(aiBody, `「${optimizedQuery}」を検索中...`);
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-      const { results, snippets } = await fetchGoogleSearch(optimizedQuery);
-      indicator3.remove();
-
-      // 検索結果を表示
-      addSearchResults(aiBody, results);
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-
-      prompt = snippets
-        ? `${buildHistoryText()}ユーザーの質問: ${userInput}\n\n以下はGoogle検索結果の抜粋です：\n\n${snippets}\n\n上記の検索結果をもとに、ユーザーの質問に対して日本語で分かりやすく回答してください。`
-        : `${buildHistoryText()}ユーザーの質問: ${userInput}\n\n検索結果を取得できませんでした。あなたの知識の範囲内で回答してください。`;
-    } else {
-      // 検索不要：会話履歴を含めてそのまま回答
-      prompt = `${buildHistoryText()}ユーザー: ${userInput}`;
-    }
+    const { prompt, optimizedQuery } = await buildAnswerPrompt(aiBody, userInput);
 
     // Step 4: Gemini Nanoで回答生成
-    const answerDiv = document.createElement('div');
-    answerDiv.className = 'ai-answer';
-    aiBody.appendChild(answerDiv);
-
-    const stream = aiSession.promptStreaming(prompt);
-    let fullText = '';
-
-    for await (const chunk of stream) {
-      fullText += chunk;
-      const html = markdownToHtml(fullText);
-      const cursorHtml = '<span class="streaming-cursor"></span>';
-      
-      let injected;
-      if (/<\/li>$/.test(html)) {
-        injected = html.replace(/(<\/li>)$/, `${cursorHtml}$1`);
-      } else if (/<\/ul>$/.test(html)) {
-        injected = html.replace(/(<\/li>)(<\/ul>)$/, `${cursorHtml}$1$2`);
-      } else {
-        injected = html + cursorHtml;
-      }
-      answerDiv.innerHTML = injected;
-
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    }
-
-    // カーソルを除去して最終テキストを確定
-    answerDiv.innerHTML = markdownToHtml(fullText);
+    const answerDiv = addAnswerContainer(aiBody);
+    const fullText = await streamAnswer(prompt, answerDiv);
 
     // 会話履歴に追加
-    chatHistory.push({ role: 'user', content: userInput });
-    chatHistory.push({ role: 'assistant', content: fullText });
+    saveTurnToHistory(userInput, fullText);
 
     // 検索した場合はGoogleリンクを表示
     if (optimizedQuery) {
       addGoogleLink(aiBody, optimizedQuery);
     }
 
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    scrollToBottom();
     setStatus('ready', 'Gemini Nano準備完了');
 
   } catch (err) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-msg';
-    errorDiv.textContent = `エラーが発生しました: ${err.message}`;
-    aiBody.appendChild(errorDiv);
-    setStatus('error', 'エラーが発生しました');
-    console.error(err);
+    showSubmissionError(aiBody, err);
   }
 
   sendBtn.disabled = false;
