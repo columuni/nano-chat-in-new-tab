@@ -468,12 +468,21 @@ function addGoogleLink(body, query) {
   a.href = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=ja`;
   a.target = '_blank';
   a.rel = 'noopener';
-  a.innerHTML = `
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M21 13v10h-6v-6h-6v6h-6v-10h-3l12-12 12 12h-3zm-1-5.907v-5.093h-3v2.093l3 3z"/>
-    </svg>
-    Googleで続きを検索
-  `;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '12');
+  svg.setAttribute('height', '12');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('fill', 'currentColor');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M21 13v10h-6v-6h-6v6h-6v-10h-3l12-12 12 12h-3zm-1-5.907v-5.093h-3v2.093l3 3z');
+
+  const text = document.createTextNode('Googleで続きを検索');
+
+  svg.appendChild(path);
+  a.appendChild(svg);
+  a.appendChild(text);
   body.appendChild(a);
 }
 
