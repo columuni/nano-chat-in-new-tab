@@ -93,6 +93,5 @@ git clone https://github.com/columuni/nano-chat-in-new-tab.git
 - host_permissionsの最小化
 - escapeHtmlの徹底
 - 検索中のインジケーターをもう少し滑らかにする
-- 会話履歴クリアボタン
-- 検索ON/OFF切り替え（デフォルトはON）
 - 初回起動オンボーディング
+- Gemini Nanoの回答待ち時に何かの動作を持たせてユーザーに対して回答待ちであることを知らせる。

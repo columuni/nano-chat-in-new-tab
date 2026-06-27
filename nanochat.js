@@ -31,6 +31,7 @@ const statusText = document.getElementById('statusText');
 const sendBtn = document.getElementById('sendBtn');
 const searchInput = document.getElementById('searchInput');
 const conversation = document.getElementById('conversation');
+const clearChatBtn = document.getElementById('clearChatBtn');
 
 const STATUS_MESSAGES = {
   NO_LANGUAGE_MODEL: 'Gemini Nanoが利用できません（Chrome 148以降が必要です）',
@@ -92,6 +93,19 @@ function markAIReady() {
   isReady = true;
   setStatus('ready', STATUS_MESSAGES.READY);
   sendBtn.disabled = false;
+  updateClearChatButtonState();
+  searchInput.focus();
+}
+
+function updateClearChatButtonState() {
+  clearChatBtn.disabled = sendBtn.disabled || conversation.children.length === 0;
+}
+
+function clearConversation() {
+  chatHistory = [];
+  conversation.replaceChildren();
+  setStatus('ready', STATUS_MESSAGES.READY);
+  updateClearChatButtonState();
   searchInput.focus();
 }
 
@@ -200,6 +214,7 @@ searchInput.addEventListener('keydown', (e) => {
 });
 
 sendBtn.addEventListener('click', handleSubmit);
+clearChatBtn.addEventListener('click', clearConversation);
 
 // =======================================
 // Google検索の実行
@@ -528,6 +543,7 @@ function prepareUserTurn(userInput) {
   searchInput.value = '';
   adjustInputHeight();
   sendBtn.disabled = true;
+  updateClearChatButtonState();
   setStatus('loading', STATUS_MESSAGES.PROCESSING);
 
   // ユーザーメッセージ表示
@@ -673,6 +689,7 @@ async function handleSubmit() {
   }
 
   sendBtn.disabled = false;
+  updateClearChatButtonState();
   searchInput.focus();
 }
 
