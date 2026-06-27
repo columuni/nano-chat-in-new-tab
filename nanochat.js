@@ -58,6 +58,7 @@ const INDICATOR_MESSAGES = {
 const ERROR_MESSAGES = {
   INIT: (message) => `初期化エラー: ${message}`,
   SUBMISSION: (message) => `エラーが発生しました: ${message}`,
+  RETRY_READY: 'エラーが発生しました。もう一度送信できます',
 };
 
 const PROMPTS = {
@@ -87,9 +88,11 @@ const MAX_PARSED_SEARCH_RESULTS = 6;
 const MAX_DISPLAYED_SEARCH_RESULTS = 5;
 const FALLBACK_SNIPPET_LENGTH = 2000;
 const COMPLETION_STATUS_DURATION_MS = 1400;
+const TEXTAREA_MAX_HEIGHT = 180;
 
 const SEARCH_RESULT_SELECTORS = ['div.g', 'div[data-sokoban-container]', 'div.tF2Cxc'];
 const SEARCH_SNIPPET_SELECTORS = ['div.VwiC3b', 'span.aCOpRe', 'div.s', 'div[data-snf]'];
+const searchResultParser = new DOMParser();
 
 function setStatus(state, text) {
   statusDot.className = `status-dot ${state}`;
@@ -233,8 +236,10 @@ function showDownloadPrompt() {
 // =======================================
 function adjustInputHeight() {
   searchInput.style.height = 'auto';
-  // paddingやborderの分を考慮しつつ、入力内容に合わせて高さを設定（最大180px）
-  searchInput.style.height = Math.min(searchInput.scrollHeight, 180) + 'px';
+  const borderHeight = searchInput.offsetHeight - searchInput.clientHeight;
+  const nextHeight = Math.min(searchInput.scrollHeight + borderHeight, TEXTAREA_MAX_HEIGHT);
+  searchInput.style.height = `${nextHeight}px`;
+  searchInput.style.overflowY = nextHeight >= TEXTAREA_MAX_HEIGHT ? 'auto' : 'hidden';
 }
 
 // 入力時にリアルタイムで高さを変更
@@ -276,8 +281,7 @@ async function fetchGoogleSearch(query) {
 
 // Google検索結果のHTMLをパース
 function parseGoogleResults(html, query) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
+  const doc = searchResultParser.parseFromString(html, 'text/html');
 
   const results = [];
   const snippetTexts = [];
@@ -710,7 +714,7 @@ function showSubmissionError(aiBody, err) {
   errorDiv.textContent = ERROR_MESSAGES.SUBMISSION(err.message);
   aiBody.appendChild(errorDiv);
   setStatus('error', STATUS_MESSAGES.ERROR);
-  showActivity('error', STATUS_MESSAGES.ERROR);
+  showActivity('error', ERROR_MESSAGES.RETRY_READY);
   console.error(err);
 }
 
@@ -748,11 +752,11 @@ async function handleSubmit() {
 
   } catch (err) {
     showSubmissionError(aiBody, err);
+  } finally {
+    sendBtn.disabled = false;
+    updateClearChatButtonState();
+    searchInput.focus();
   }
-
-  sendBtn.disabled = false;
-  updateClearChatButtonState();
-  searchInput.focus();
 }
 
 // 会話履歴をテキスト化（直近6ターンまで）
