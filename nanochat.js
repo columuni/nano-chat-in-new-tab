@@ -330,18 +330,20 @@ async function needsSearch(userInput) {
   if (!judgeSession) return false;
 
   try {
-    const result = await judgeSession.prompt(
-      `Does the following question require a Google search to answer accurately? Answer only "yes" or "no".
-
-      Requires search: latest news, current prices, weather, real-time info, recent events.
-      Does not require search: general knowledge, math, writing help, casual conversation.
-
-      Question: ${userInput}`
-    );
+    const result = await judgeSession.prompt(buildNeedsSearchPrompt(userInput));
     return result.trim().toLowerCase().startsWith('yes');
   } catch {
     return false;
   }
+}
+
+function buildNeedsSearchPrompt(userInput) {
+  return `Does the following question require a Google search to answer accurately? Answer only "yes" or "no".
+
+      Requires search: latest news, current prices, weather, real-time info, recent events.
+      Does not require search: general knowledge, math, writing help, casual conversation.
+
+      Question: ${userInput}`;
 }
 
 // =======================================
@@ -351,17 +353,7 @@ async function optimizeQuery(userInput) {
   if (!querySession) return userInput;
 
   try {
-    const result = await querySession.prompt(
-    `以下をGoogle検索向け検索語に変換してください。
-
-    条件:
-    - キーワードのみ
-    - 説明禁止
-    - 30文字以内
-
-    入力:
-    ${userInput}`
-    );
+    const result = await querySession.prompt(buildOptimizeQueryPrompt(userInput));
 
     return result.trim() || userInput;
 
@@ -369,6 +361,18 @@ async function optimizeQuery(userInput) {
     console.error('クエリー最適化失敗:', err);
     return userInput;
   }
+}
+
+function buildOptimizeQueryPrompt(userInput) {
+  return `以下をGoogle検索向け検索語に変換してください。
+
+    条件:
+    - キーワードのみ
+    - 説明禁止
+    - 30文字以内
+
+    入力:
+    ${userInput}`;
 }
 
 // =======================================
@@ -595,12 +599,12 @@ async function buildPromptWithSearch(aiBody, userInput) {
   scrollToBottom();
 
   return {
-    prompt: buildPromptFromSearchResults(userInput, snippets),
+    prompt: buildSearchAnswerPrompt(userInput, snippets),
     optimizedQuery,
   };
 }
 
-function buildPromptFromSearchResults(userInput, snippets) {
+function buildSearchAnswerPrompt(userInput, snippets) {
   return snippets
     ? `${buildHistoryText()}ユーザーの質問: ${userInput}\n\n以下はGoogle検索結果の抜粋です：\n\n${snippets}\n\n上記の検索結果をもとに、ユーザーの質問に対して日本語で分かりやすく回答してください。`
     : `${buildHistoryText()}ユーザーの質問: ${userInput}\n\n検索結果を取得できませんでした。あなたの知識の範囲内で回答してください。`;
