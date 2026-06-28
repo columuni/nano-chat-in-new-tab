@@ -89,4 +89,6 @@ git clone https://github.com/columuni/nano-chat-in-new-tab.git
 
 ## TODO
 
+- 検索ON/OFFトグル
+- 回答の末尾に生成時間や使用トークン数を薄く表示する
 - CSSを最新のネスト仕様に書き換え（将来検討）
